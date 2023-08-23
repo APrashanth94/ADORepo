@@ -2,10 +2,6 @@ resource "azurerm_resource_group" "CUR_Lin_resourcegroup" {
   count    = length(local.csv_data)
   name     = local.format_csv_data[count.index].resourcegroup
   location = local.csv_data[count.index].location
-
-   provisioner "local-exec" {
-    command = "echo Resource Group: ${local.format_csv_data[count.index].resourcegroup} Location: ${local.csv_data[count.index].location}"
-  }
 }
 
 resource "azurerm_virtual_network" "CUR_Lin_Vnetwork" {
@@ -14,10 +10,6 @@ resource "azurerm_virtual_network" "CUR_Lin_Vnetwork" {
   location         = azurerm_resource_group.CUR_Lin_resourcegroup[count.index].location
   resource_group_name = azurerm_resource_group.CUR_Lin_resourcegroup[count.index].name
   address_space    = [local.csv_data[count.index].vnetAddressPrefixes]
-
-  /*depends_on = [
-  azurerm_resource_group.CUR_Lin_resourcegroup[count.index]
-]*/
 }
 
 resource "azurerm_subnet" "CUR_Lin_Subnet" {
@@ -26,11 +18,6 @@ resource "azurerm_subnet" "CUR_Lin_Subnet" {
   resource_group_name = azurerm_resource_group.CUR_Lin_resourcegroup[count.index].name
   virtual_network_name = azurerm_virtual_network.CUR_Lin_Vnetwork[count.index].name
   address_prefixes   = [local.csv_data[count.index].snetAddressPrefixes]
-
-  /*depends_on = [
-  azurerm_resource_group.CUR_Lin_resourcegroup[count.index],
-  azurerm_virtual_network.CUR_Lin_Vnetwork[count.index]
-]*/
 }
 
 resource "azurerm_network_security_group" "CUR_Lin_NSG" {
@@ -39,14 +26,8 @@ resource "azurerm_network_security_group" "CUR_Lin_NSG" {
   location            = each.value.location
   resource_group_name = azurerm_resource_group.CUR_Lin_resourcegroup[each.key].name
 
-
-  //name                = local.format_csv_data[count.index].nsgName
- // location            = local.format_csv_data[count.index].location
- // resource_group_name = azurerm_resource_group.CUR_Lin_resourcegroup[count.index].name
-
   dynamic "security_rule" {
      for_each = each.value.nsg_rules
-    //for_each = jsondecode(local.format_csv_data[count.index].nsg_rules)
 
     content {
       name                       = security_rule.value.rdpRuleName
@@ -60,11 +41,6 @@ resource "azurerm_network_security_group" "CUR_Lin_NSG" {
       destination_address_prefix = security_rule.value.destinationAddressPrefix
     }
   }
-
-  /*depends_on = [
-    azurerm_resource_group.CUR_Lin_resourcegroup[count.index]
-   // azurerm_virtual_network.CUR_Lin_Vnetwork[count.index]
-  ]*/
 }
 
 resource "azurerm_network_interface" "CUR_Lin_Network_Interface" {
@@ -79,22 +55,12 @@ resource "azurerm_network_interface" "CUR_Lin_Network_Interface" {
     private_ip_address_allocation = local.csv_data[count.index].privateIPAllocationMethod
     private_ip_address            = local.csv_data[count.index].privateIPv4Address
   }
-
-  /*depends_on = [
-    azurerm_subnet.CUR_Lin_Subnet[count.index],
-    azurerm_resource_group.CUR_Lin_resourcegroup[count.index]
-  ]*/
-
 }
 
 resource "random_id" "storage_account_id" {
   count      = length(local.csv_data)
   byte_length = 8
   prefix     = "diag"
-
- /* depends_on = [
-  azurerm_resource_group.CUR_Lin_resourcegroup[count.index]
-]*/
 }
 
 resource "azurerm_storage_account" "storage_account" {
@@ -119,14 +85,11 @@ resource "azurerm_virtual_machine" "CUR_Lin_VM" {
   resource_group_name  = azurerm_resource_group.CUR_Lin_resourcegroup[count.index].name
   network_interface_ids = [azurerm_network_interface.CUR_Lin_Network_Interface[count.index].id]
   vm_size              = local.csv_data[count.index].virtualMachineSize
-  //admin_username      = local.csv_data[count.index].adminUsername
- 
+
     delete_os_disk_on_termination = true
     os_profile {
     computer_name  = local.csv_data[count.index].virtualMachineName
     admin_username = local.csv_data[count.index].adminUsername
-
-   // custom_data = base64encode(local.csv_data[count.index].customData)
   }
 
   os_profile_linux_config {
@@ -150,18 +113,5 @@ resource "azurerm_virtual_machine" "CUR_Lin_VM" {
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = local.csv_data[count.index].osDiskType
-  }
-/*
-  boot_diagnostics {
-    enabled     = true
-    storage_uri = azurerm_storage_account.storage_account[count.index].primary_blob_endpoint
-  }
-*/
-
-   /*depends_on = [
-    azurerm_network_interface.CUR_Lin_Network_Interface[count.index],
-    azurerm_network_security_group.CUR_Lin_NSG
-     
-  ]*/
-  
+  } 
 }
